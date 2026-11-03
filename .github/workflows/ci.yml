@@ -1,0 +1,37 @@
+# Runs the exact command the reviewers run, on every push and pull request.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and format (Biome)
+        run: pnpm check
+
+      - name: Typecheck (api + web)
+        run: pnpm typecheck
+
+      - name: Test (Workers runtime, real D1)
+        run: pnpm test
+
+      - name: Build web
+        run: pnpm build
