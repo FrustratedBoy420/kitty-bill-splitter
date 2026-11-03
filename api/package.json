@@ -7,7 +7,7 @@
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types",
     "postinstall": "wrangler types",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "wrangler types && tsc --noEmit",
     "test": "vitest run",
     "demo:race": "node scripts/race-demo.ts"
   },
