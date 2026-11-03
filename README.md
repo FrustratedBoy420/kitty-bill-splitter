@@ -1,169 +1,75 @@
-# SDE Intern Assignment: Shared Bill Splitter
+# Kitty: split the bills at home, to the cent
 
-Welcome. In this assignment you build a small bill splitter for a shared home. It has two parts:
+Kitty is a bill splitter for a shared home. You create a home, add the people who live there, and
+add a bill. Kitty cuts the bill into one share per person, exact to the cent, and each person pays
+their own share. A share can never be paid twice, even when the same request is retried or two
+people press Pay at the same moment.
 
-1. **Homes and members:** create a home and add members to it.
-2. **Bill splitting:** split a bill between the members. Each member pays their own share.
+<img src="docs/design/screens/home-desktop.jpg" alt="Kitty home screen: a new-bill form, bills split into shares with Pay buttons, and a Who owes what panel" width="900">
 
-The assignment is small on purpose. We want correct, safe, and clear code. We do not want many features.
+[![CI](https://github.com/FrustratedBoy420/kitty-bill-splitter/actions/workflows/ci.yml/badge.svg)](https://github.com/FrustratedBoy420/kitty-bill-splitter/actions/workflows/ci.yml)
 
-## What we look at
+## Stack
 
-- **Your code passes the tests.** The tests decide, not opinion. You get the visible tests. We also run extra tests that you do not see.
-- **Your code is safe when things go wrong.** Wrong input, repeated requests, and two requests at the same time must not break your data.
-- **Your code is typed.** Use TypeScript. Do not use `any`.
-- **You understand your code.** You record a short video and explain it.
-
-Take your time. A careful, correct solution is better than a fast one. We expect 2 to 3 days of real work.
-
-## Stack (required)
-
-- **API:** Hono on Cloudflare Workers
-- **Database:** Cloudflare D1 (SQLite). The binding is `DB` in `api/wrangler.jsonc`.
-- **Web:** React, Vite, TanStack Router
-- **Language:** TypeScript on both sides
-- **Tests:** Vitest, running inside the Workers runtime
-- **Quality:** Biome. `pnpm check` and `pnpm typecheck` must pass.
-
-You choose the rest (styling, form library, validation library). Pick tools you can explain.
-
-## The task
-
-The assignment has two parts. Do Part 1 first. Part 2 builds on it.
-
-**Database.** Write the schema as SQL migration files in `api/migrations/`. For example `0001_init.sql`. The tests apply every file in this folder. Your schema must have **at least 3 named constraints** that protect the data. For example a foreign key, a `CHECK`, or a `UNIQUE` key. Be ready to explain what each constraint stops.
-
-**Errors.** Every error response is JSON: `{ "error": "message" }`.
-
-## Part 1: Homes and members
-
-Create a home and add members to it. The order in which members are added matters in Part 2.
-
-#### `POST /api/homes`
-
-- Request: `{ "name": string }`
-- Success: `201` `{ id, name }`
-
-#### `POST /api/homes/:homeId/members`
-
-- Request: `{ "name": string }`
-- Success: `201` `{ id, homeId, name }`
-- Errors: `404` home not found
-
-Visible tests: `api/test/homes.test.ts`.
-
-## Part 2: Bill splitting
-
-Add a bill to a home, split it between the members, and let each member pay their share.
-
-All amounts are whole **cents** (integers). `100` cents is 1 dollar. Never use decimals for money.
-
-#### `POST /api/homes/:homeId/bills`
-
-- Request: `{ "title": string, "totalCents": number }`
-- Success: `201` `{ id, homeId, title, totalCents, shares: [{ id, memberId, amountCents, paidAt: null }] }`
-- Errors: `404` home not found. `422` total is not a positive whole number, or the home has no members.
-
-#### `POST /api/bills/:billId/shares/:shareId/pay`
-
-- Request: header `Idempotency-Key`
-- Success: `200` `{ id, memberId, amountCents, paidAt }`
-- Errors: `400` key missing. `404` bill or share not found. `409` share already paid with a different key.
-
-#### `GET /api/homes/:homeId/balances`
-
-- Success: `200` `{ balances: [{ memberId, name, outstandingCents }] }`
-- Errors: `404` home not found
-
-**Rules**
-
-- **Split.** A bill is split between all members of the home. The shares always add up to `totalCents`. If the amount does not divide evenly, the extra cents go to the members one by one, in the order the members were added to the home. Example: 1000 cents between 3 members gives `334`, `333`, `333`.
-- **Pay.** Paying marks one share as paid and sets `paidAt`. If the same `Idempotency-Key` is sent again for the same share, answer `200` with the same result. Do not pay twice. If two requests pay the same share at the same time, only one may succeed.
-- **Balances.** `outstandingCents` is the sum of the member's unpaid shares, across all bills of the home. List the members in the order they were added.
-
-Visible tests: `api/test/bills.test.ts` and `api/test/payments.test.ts`.
-
-#### Web page
-
-Build one page that:
-
-- shows the bills of a home and the shares of each bill,
-- lets a member pay a share,
-- shows clear **loading**, **empty**, and **error** states,
-- keeps the share unpaid and shows an error if the payment fails.
-
-The page must not crash when the API answers with an error or is slow.
-
-## Cases you must handle
-
-You must handle these cases and talk about them in your video:
-
-1. A home with no members.
-2. An amount that is zero, negative, or not a whole number.
-3. An amount that does not divide evenly.
-4. The same payment request sent twice.
-5. Two members paying the same share at the same time.
-6. A bill or share that does not exist.
-7. The API answers with a 500 error or is slow. The web page must not crash.
+| Part     | Tech                                                                          |
+| -------- | ----------------------------------------------------------------------------- |
+| API      | [Hono](https://hono.dev) on Cloudflare Workers                                |
+| Database | Cloudflare D1 (SQLite), schema in SQL migrations                              |
+| Web      | React 19, Vite, TanStack Router, Motion, three.js (one lazy-loaded scene)     |
+| Language | TypeScript, `strict` with `noUncheckedIndexedAccess`, no `any`                |
+| Tests    | Vitest in the Workers runtime against real D1, plus fast-check property tests |
+| Quality  | Biome (lint and format), CI on every push                                     |
 
 ## Run it
 
-This is a pnpm workspace. Install once at the root.
-
 ```bash
 pnpm install
-pnpm dev          # api on :8787 and web on :5173
+pnpm dev          # API on :8787, web on http://localhost:5173 (applies migrations first)
 ```
 
-Open http://localhost:5173. The starter page shows a title. `/api/health` returns `{ "status": "ok" }`.
+| Command          | What it does                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `pnpm test`      | 54 tests: endpoints, edge cases, concurrency, property tests                          |
+| `pnpm check`     | Biome lint and format                                                                 |
+| `pnpm typecheck` | `tsc` on the API (including tests and scripts) and the web app                        |
+| `pnpm build`     | Production build of the web app                                                       |
+| `pnpm demo:race` | With `pnpm dev` running: fires parallel payments at the live API and prints PASS/FAIL |
 
-```bash
-pnpm test         # run the visible tests in api/test
-pnpm check        # Biome: format and lint. Must pass.
-pnpm check:fix    # fix what Biome can fix
-pnpm typecheck    # tsc on both packages. Must pass.
-pnpm build        # production build of the web app
-```
+If pnpm reports ignored build scripts, run `pnpm approve-builds` and allow `esbuild` and `workerd`.
 
-`pnpm dev` applies your migrations to a local database before it starts the API.
+## Features
 
-If pnpm says some build scripts were ignored, run `pnpm approve-builds` and allow `esbuild` and `workerd`.
+- **Exact splits.** All money is whole cents. When a bill does not divide evenly, the extra cents
+  go one each to the people who joined first: $10.00 between three people is $3.34, $3.33, $3.33.
+- **Live preview.** The bill form shows each person's share before the bill is sent.
+- **Safe payments.** Each payment carries an `Idempotency-Key`. A retry with the same key gets the
+  same answer; a second payment with a different key gets `409`. The page reuses its key after a
+  timeout or a reload, so a payment that did reach the server is never repeated.
+- **Who owes what.** Each person's unpaid total across every bill of the home, in join order.
+- **Honest states.** Every block has its own loading, empty and error state. A share only turns
+  "Paid" after the server confirms it. If the answer never arrives, the page says it couldn't
+  confirm the payment rather than claiming it failed.
 
-When you change `api/wrangler.jsonc`, refresh the `Env` types:
+## API
 
-```bash
-pnpm --filter bill-splitter-api cf-typegen
-```
+All amounts are integer cents. Every error is JSON: `{ "error": "message" }`.
 
-## Rules for the tests
+| Method and path                                                         | Success                                                    | Errors                                  |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------- |
+| `POST /api/homes` `{ name }`                                            | `201 { id, name }`                                         | 400, 422                                |
+| `GET /api/homes/:homeId`                                                | `200 { id, name, members }`                                | 404                                     |
+| `POST /api/homes/:homeId/members` `{ name }`                            | `201 { id, homeId, name }`                                 | 400, 404, 422                           |
+| `POST /api/homes/:homeId/bills` `{ title, totalCents }`                 | `201 { id, homeId, title, totalCents, shares }`            | 400, 404, 422 (bad total or no members) |
+| `GET /api/homes/:homeId/bills`                                          | `200 { bills }`, newest first                              | 404                                     |
+| `POST /api/bills/:billId/shares/:shareId/pay`, header `Idempotency-Key` | `200 { id, memberId, amountCents, paidAt }`                | 400 (no key), 404, 409                  |
+| `GET /api/homes/:homeId/balances`                                       | `200 { balances: [{ memberId, name, outstandingCents }] }` | 404                                     |
 
-- The visible tests are in `api/test`. They start with a failing result. Your job is to make them pass.
-- Do **not** change the visible tests or `api/test/helpers.ts`. We compare them with the original.
-- We run extra tests after you submit. They test the cases in "Cases you must handle" more closely.
+## How it is verified
 
-## AI policy
-
-You can use AI tools. Tell us which ones and where in your answers on the form.
-You must understand every line you submit. We check this with your video and in a live call. "The AI wrote it" is not an answer.
-
-## Project tour
-
-Kitty is the finished bill splitter: a Hono API on Cloudflare Workers with D1, and a single React
-page.
-
-| Start here                                   |                                                                      |
-| -------------------------------------------- | -------------------------------------------------------------------- |
-| [`docs/STRUCTURE.md`](docs/STRUCTURE.md)     | Every file, the layering rules, and where each requirement is proven |
-| [`docs/ENGINEERING.md`](docs/ENGINEERING.md) | The money rules: constraints, split, pay, status codes               |
-| [`docs/DESIGN.md`](docs/DESIGN.md)           | The interface, with screenshots of the key states                    |
-
-How it is checked:
-
-- **54 tests** run in the Workers runtime against real D1. They include the 24 visible tests,
-  edge cases, and **property-based tests** (fast-check). These check the split rules on thousands
-  of random bills, and that random bursts of parallel payments always pay a share exactly once.
-- **`pnpm demo:race`** (with `pnpm dev` running) fires parallel payments at the live API and
-  prints `PASS` when exactly one wins and retries replay:
+- **54 tests** run inside the Workers runtime on a real D1 database. They cover the endpoints,
+  validation, 404s, large homes, and races, plus property-based tests that check the split rules
+  on thousands of random bills and random bursts of parallel payments.
+- **`pnpm demo:race`** shows the concurrency rules against the running API:
 
   ```text
   1) 12 parallel payments of Asha's share, each with its own key
@@ -174,57 +80,68 @@ How it is checked:
      PASS: every retry got the same answer
   ```
 
-- **CI** (`.github/workflows/ci.yml`) runs `pnpm install && pnpm check && pnpm typecheck &&
-  pnpm test && pnpm build` on every push.
+- **CI** runs `pnpm install && pnpm check && pnpm typecheck && pnpm test && pnpm build` on every
+  push.
+
+## Project layout
+
+```
+api/
+  migrations/0001_init.sql   schema: 4 tables, 16 named constraints
+  src/routes/                homes.ts, bills.ts (split, atomic writes, idempotent pay)
+  src/                       validation, split, errors, row mappers
+  test/                      visible, edge-case and property tests
+  scripts/race-demo.ts       live concurrency demo
+web/src/
+  api.ts, guards.ts          typed client: timeout, runtime shape checks, never throws
+  components/                homes screen, home screen, bills, pay button, split strip
+  styles.css                 all design tokens
+docs/                        structure, engineering notes, design notes
+```
+
+More detail: [`docs/STRUCTURE.md`](docs/STRUCTURE.md) (every file, and where each requirement is
+proven), [`docs/ENGINEERING.md`](docs/ENGINEERING.md) (constraints, split, payment logic, status
+codes), [`docs/DESIGN.md`](docs/DESIGN.md) (interface and states, with screenshots).
 
 ## Decisions
 
-1. **Paying a share is one conditional `UPDATE`.** The query is
-   `UPDATE shares ... WHERE id = ? AND bill_id = ? AND paid_at IS NULL RETURNING ...`, so the
-   check and the write happen in one statement. SQLite runs writes one at a time, so when two
-   requests race, exactly one matches the unpaid row. The other request reads the share and gets
-   `200` if it sent the same `Idempotency-Key` (it replays the stored `paidAt`) or `409` if it
-   sent a different key. Reading first and then writing would let both requests see "unpaid" and
-   both pay. Trade-off: the key lives on the share row (`paid_key`), not in a general
-   idempotency table. That is simpler, and the spec only needs one key per share, but the pattern
-   does not carry over to other endpoints.
-2. **The database enforces the invariants, not only the code.** The schema has 16 named
-   constraints. Composite foreign keys (`fk_shares_bill`, `fk_shares_member`) stop a share from
-   linking a bill and a member of different homes. `chk_bills_total_positive` and
-   `chk_shares_amount_non_negative` reject bad amounts. A share of 0 is allowed, because 2 cents
-   over 3 members gives 1, 1, 0. `uq_shares_bill_member` allows one share per member per bill.
-   `chk_shares_paid_consistent` keeps `paid_at` and `paid_key` both set or both null. Member
-   order comes from an `AUTOINCREMENT` `seq` column, not a timestamp, so two members added in the
-   same millisecond still have a fixed order.
-3. **The split runs in TypeScript, then one atomic batch writes the bill.** `splitCents` is a
-   pure integer function: it computes `floor(total / n)` and gives the remainder to the first
-   members. The bill row and all share rows go into one `DB.batch()`, which D1 runs as a single
-   transaction, so a bill never exists with missing shares. The page keeps one
-   `Idempotency-Key` per share in `sessionStorage` until the payment is confirmed. If a request
-   times out but did reach the server, the retry (even after a reload) replays it instead of
-   getting a `409`. There is no optimistic update: a share shows as paid only after a `200`.
+1. **Paying a share is one conditional `UPDATE`.** I wrote the payment as
+   `UPDATE shares ... WHERE id = ? AND bill_id = ? AND paid_at IS NULL RETURNING ...`, so the check
+   and the write happen in one statement. SQLite runs writes one at a time, so when two requests
+   race, exactly one matches the unpaid row. The other request reads the share and gets `200` if it
+   sent the same `Idempotency-Key` (the stored `paidAt` is replayed) or `409` if it sent a
+   different key. Reading first and then writing would let both requests see "unpaid" and both pay.
+   **Trade-off:** the key lives on the share row (`paid_key`), not in a general idempotency table.
+   That keeps the payment and its key in one atomic write and is all this API needs, but the
+   pattern does not carry over to other endpoints.
+2. **The database enforces the rules, not only the code.** The schema has 16 named constraints.
+   Composite foreign keys (`fk_shares_bill`, `fk_shares_member`) stop a share from linking a bill
+   and a person from different homes. `chk_bills_total_positive` and
+   `chk_shares_amount_non_negative` reject bad amounts; a share of 0 is allowed, because 2 cents
+   between 3 people is 1, 1, 0. `uq_shares_bill_member` allows one share per person per bill, and
+   `chk_shares_paid_consistent` keeps `paid_at` and `paid_key` set together. Join order comes from
+   an `AUTOINCREMENT` `seq` column rather than a timestamp, so two people added in the same
+   millisecond still have a fixed order.
+3. **The split is a pure function, and one atomic batch writes the bill.** `splitCents` computes
+   `floor(total / n)` and gives the remainder to the first people, using integers only. The bill
+   row and all share rows go into one `DB.batch()`, which D1 runs as a single transaction, so a
+   bill never exists without its shares. Shares are inserted 20 rows per statement, so a large home
+   stays within D1's per-request query limit.
 
-Smaller choices, and why:
+Smaller choices:
 
 - **400 vs 422.** `400` only when the request cannot be read: the body is not JSON, or the
-  `Idempotency-Key` is missing or blank (the spec's own 400). `422` for JSON that parses but has
-  wrong fields, including a blank `name` or `title`. The spec uses 422 for bad amounts, so every
-  field error follows it. Fields are validated before any lookup, so a bad body to a missing home
-  is 422.
+  `Idempotency-Key` is missing or blank. `422` for JSON that parses but has wrong fields, including
+  a blank `name` or `title`, to match the 422 the brief uses for bad amounts. Fields are validated
+  before any lookup.
 - **No "list every home" endpoint.** Without accounts it would show every household to anyone. The
-  page remembers homes created or opened in this browser; others join through the home's link.
-  The page uses two extra reads: `GET /api/homes/:homeId` (name and members) and
-  `GET /api/homes/:homeId/bills`.
+  web app remembers the homes created or opened in that browser; other people join through the
+  home's link.
 - **Trust boundaries.** The web client checks every API answer at runtime (`web/src/guards.ts`)
-  instead of casting. On the server, D1 row types trust our own schema, which the constraints
-  enforce.
+  instead of casting. On the server, row types trust the schema, which the constraints enforce.
 
-## How to submit
+## Known limits
 
-1. Click **Use this template**, then **Create a new repository**. Make the repository **public**.
-2. Build your solution in your new repository. Small, clear commits are welcome.
-3. Update this README with a short section called **Decisions**. Write 3 decisions you made and why.
-4. Record a video of **3 minutes or less** (Loom or unlisted YouTube). Show the architecture, the data flow, and one trade-off you made. Make sure anyone with the link can view it.
-5. Paste the repository link and the video link in the application form.
-
-We will run `pnpm install && pnpm check && pnpm typecheck && pnpm test` on your repository.
+- No accounts: anyone with a home's link can see it and pay its shares.
+- Creating homes, people and bills is not idempotent; a retried create makes a duplicate.
+- Nothing can be edited or deleted yet.

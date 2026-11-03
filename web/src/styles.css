@@ -269,7 +269,7 @@ a.crumb:hover {
 .input:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft); /* taste-skill-ignore: focus ring, not a resting shadow */
+  box-shadow: 0 0 0 3px var(--accent-soft); /* focus ring only; nothing at rest has a shadow */
 }
 
 .input-money {
