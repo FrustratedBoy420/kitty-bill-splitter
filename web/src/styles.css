@@ -1,0 +1,829 @@
+/*
+  Kitty, the shared-home bill splitter. Style: "pastel consumer" (see docs/DESIGN.md).
+  One ground, white panels with a 1px edge and no shadow, one cobalt for paid money,
+  one pale tint per flatmate. Every value below is a token; components use tokens only.
+
+  Grid, desktop: a centred 1152px column = 768 main + 24 gap + 360 aside.
+*/
+
+:root {
+  --ground: #f3f5f7;
+  --surface: #ffffff;
+  --raised: #f2f8fd;
+  --active: #eceff2;
+  --border: #e6e6e6;
+  --rule: #f0f1f3;
+  --control: #d6d9dd;
+  --text: #1b1d1f;
+  --muted: #5c6064;
+  --primary: #1b1d1f;
+  --accent: #1d5fd6;
+  --accent-soft: #dcf1ff;
+  --accent-ink: #0a3a80;
+  --positive: #2f7a45;
+  --negative: #c41c29;
+  --pill-positive-bg: #dcfae5;
+  --pill-positive-ink: #04250e;
+  --pill-negative-bg: #ffedea;
+  --pill-negative-ink: #831c1e;
+  --skeleton: #eceef1;
+
+  --radius-card: 20px;
+  --radius-inner: 10px;
+  --radius-control: 10px;
+  --radius-chip: 999px;
+  --gap: 24px;
+  --pad: 24px;
+  --control-height: 40px;
+  --row-height: 56px;
+  --column: 1152px;
+  --aside: 360px;
+
+  --font: "Manrope Variable", Inter, system-ui, sans-serif;
+  --fs-title: 28px;
+  --fs-section: 20px;
+  --fs-figure: 32px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-meta: 12px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 140ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- Shell: no sidebar, a 56px bar over a centred column ---------- */
+
+.bar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(var(--column) + 2 * var(--pad));
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.crumb-sep {
+  color: var(--control);
+}
+
+.crumb {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+a.crumb:hover {
+  color: var(--text);
+}
+
+.canvas {
+  max-width: calc(var(--column) + 2 * var(--pad));
+  margin: 0 auto;
+  padding: 20px var(--pad) 96px;
+}
+
+.title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.title-row h1 {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.title-row p {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--aside);
+  gap: var(--gap);
+  align-items: start;
+}
+
+.stack {
+  display: grid;
+  gap: var(--gap);
+}
+
+/* The aside answers the screen's question, so it stays in view while the bills scroll. */
+.aside {
+  position: sticky;
+  top: var(--gap);
+}
+
+/* ---------- Panels ---------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--pad);
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-head h2 {
+  font-size: var(--fs-section);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.panel-head .meta {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 8px 0 -8px;
+}
+
+.section-head h2 {
+  font-size: var(--fs-section);
+  font-weight: 500;
+}
+
+/* ---------- Avatars ---------- */
+
+.avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.avatar.small {
+  width: 24px;
+  height: 24px;
+  font-size: var(--fs-meta);
+}
+
+/* ---------- Controls ---------- */
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+
+.input {
+  height: var(--control-height);
+  width: 100%;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  transition: border-color var(--fast) var(--ease-out);
+}
+
+.input:hover {
+  border-color: #b9bec4;
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft); /* taste-skill-ignore: focus ring, not a resting shadow */
+}
+
+.input-money {
+  position: relative;
+}
+
+.input-money span {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.input-money .input {
+  padding-left: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn {
+  height: var(--control-height);
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-chip);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: var(--fs-small);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--fast) var(--ease-out),
+    transform var(--fast) var(--ease-out);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #33363a;
+}
+
+/* Disabled stays readable (5.5:1) and the reason is written beside it. */
+.btn-primary:disabled {
+  background: var(--active);
+  color: var(--muted);
+}
+
+.btn-ghost {
+  background: var(--surface);
+  border-color: var(--control);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--active);
+}
+
+.text-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 600;
+  font-size: var(--fs-small);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---------- Bill composer ---------- */
+
+.composer-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 16px;
+  min-height: 24px;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+
+.preview-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+/* ---------- Bills ---------- */
+
+.bills {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--gap);
+}
+
+.bill-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.bill-head h3 {
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.bill-total {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.bill-sub {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+/* The split strip: the bill's total as its shares, paid ones filled in cobalt. */
+.split {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  margin: 16px 0 8px;
+}
+
+.split-seg {
+  position: relative;
+  overflow: hidden;
+  min-width: 4px;
+  border-radius: 2px;
+  background: var(--accent-soft);
+}
+
+.split-seg:first-child {
+  border-radius: 999px 2px 2px 999px;
+}
+
+.split-seg:last-child {
+  border-radius: 2px 999px 999px 2px;
+}
+
+.split-seg:only-child {
+  border-radius: 999px;
+}
+
+.split-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: left center;
+}
+
+.shares {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.share {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 128px;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--row-height);
+  border-top: 1px solid var(--rule);
+}
+
+.share:first-child {
+  border-top: 0;
+}
+
+.share-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-amount {
+  text-align: right;
+  font-weight: 600;
+}
+
+.share-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.share-error {
+  grid-column: 2 / -1;
+  margin: -6px 0 12px;
+  color: var(--pill-negative-ink);
+  font-size: var(--fs-small);
+}
+
+/* Pay button (Motion, after 21st.dev's morph-status button) */
+.pay {
+  min-width: 96px;
+  overflow: hidden;
+}
+
+.pay-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill-paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-chip);
+  background: var(--pill-positive-bg);
+  color: var(--pill-positive-ink);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Who owes what ---------- */
+
+.owed-label {
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.owed-total {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-figure);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.owed-note {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.people {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.person {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  border-top: 1px solid var(--rule);
+}
+
+.person-amount {
+  text-align: right;
+  font-weight: 600;
+}
+
+.person-amount.zero {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.add-person {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ---------- Homes hero: copy and form beside the 3D coin ---------- */
+
+.panel.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px;
+}
+
+.hero-copy h2 {
+  font-size: var(--fs-figure);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  max-width: 14em;
+}
+
+.hero-text {
+  margin-top: 12px;
+  max-width: 34em;
+  color: var(--muted);
+}
+
+.hero-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 28px;
+  max-width: 460px;
+}
+
+.coin-stage {
+  position: relative;
+  min-height: 340px;
+  background: var(--raised);
+}
+
+/* The canvas stops above the caption, so the coin never sits on text. */
+.coin-canvas {
+  position: absolute;
+  inset: 0 0 52px;
+  z-index: 1;
+  cursor: grab;
+}
+
+.coin-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.coin-fallback {
+  position: absolute;
+  inset: 0 0 52px;
+  display: grid;
+  place-items: center;
+  transition: opacity 300ms var(--ease-out);
+}
+
+.coin-canvas[data-ready="true"] ~ .coin-fallback {
+  opacity: 0;
+}
+
+.coin-caption {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
+  z-index: 2;
+  color: var(--muted);
+  font-size: var(--fs-small);
+  pointer-events: none;
+}
+
+/* ---------- Homes list ---------- */
+
+.home-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--row-height);
+  padding: 0 12px;
+  margin: 0 -12px;
+  border-radius: var(--radius-inner);
+  text-decoration: none;
+  transition: background-color var(--fast) var(--ease-out);
+}
+
+.home-row:hover {
+  background: var(--active);
+}
+
+.home-row + .home-row {
+  margin-top: 2px;
+}
+
+.home-row svg {
+  color: var(--muted);
+}
+
+/* ---------- States ---------- */
+
+.empty {
+  padding: 16px;
+  border: 1px dashed var(--control);
+  border-radius: var(--radius-inner);
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-inner);
+  background: var(--pill-negative-bg);
+  color: var(--pill-negative-ink);
+  font-size: var(--fs-small);
+}
+
+.error .text-btn {
+  color: var(--pill-negative-ink);
+}
+
+.form-error {
+  margin-top: 12px;
+}
+
+.sk {
+  display: block;
+  background: var(--skeleton);
+  border-radius: 6px;
+}
+
+/* ---------- Phone and tablet ---------- */
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The question first: who owes what moves above the bills. */
+  .aside {
+    order: -1;
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --pad: 16px;
+    --gap: 16px;
+    --fs-title: 24px;
+    --fs-figure: 30px;
+  }
+
+  .panel {
+    padding: 20px 16px;
+  }
+
+  .btn {
+    height: 44px;
+  }
+
+  .composer-fields {
+    grid-template-columns: minmax(0, 1fr) 120px;
+  }
+
+  .composer-fields .btn {
+    grid-column: 1 / -1;
+    height: 44px;
+  }
+
+  .panel.hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+  }
+
+  .hero-copy {
+    padding: 24px 16px;
+  }
+
+  .hero-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .coin-stage {
+    min-height: 260px;
+  }
+
+  /* Two lines per share: name over amount, the one action on the right. */
+  .share {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "avatar name action"
+      "avatar amount action";
+    column-gap: 12px;
+    row-gap: 0;
+    padding: 10px 0;
+  }
+
+  .share > .avatar {
+    grid-area: avatar;
+  }
+
+  .share-name {
+    grid-area: name;
+  }
+
+  .share-amount {
+    grid-area: amount;
+    text-align: left;
+    font-size: var(--fs-small);
+  }
+
+  .share-action {
+    grid-area: action;
+  }
+
+  .share-error {
+    grid-column: 2 / -1;
+    margin: 8px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
